@@ -144,7 +144,7 @@
     
   </style>
 </head>
-<body onload="loadModel()">
+<body onload="init(); loadModel()">
   <header>Octo A/B Test</header>
 <div class="container">
   <div class="octopus-container">🐙
@@ -155,12 +155,12 @@
       <div class="image-box">
         <label for="imageA" class="custom-file-upload">Imagem A</label>
         <input type="file" id="imageA" accept="image/*">
-        <canvas id="thumbA" width="32" height="32"></canvas>
+        <canvas id="thumbA" width="132" height="132"></canvas>
       </div>
       <div class="image-box">
         <label for="imageB" class="custom-file-upload">Imagem B</label>
         <input type="file" id="imageB" accept="image/*">
-        <canvas id="thumbB" width="32" height="32"></canvas>
+        <canvas id="thumbB" width="132" height="132"></canvas>
       </div>
     </div>
     <button onclick="processImages()">Processar</button>
@@ -178,6 +178,14 @@
         O Octo A/B Test é um projeto de machine learning. O algoritmo determina qual imagem mais ativa a rede de saliência no ser humano.
     </footer>
 
+
+
+    <div class="container">
+    <div class="container" style="text-align:center;">
+        <img src="https://uploaddeimagens.com.br/images/004/633/148/original/Upload.jpeg?1696944052" alt="Upload" style="width:50%; margin:1%;">
+        <img src="https://uploaddeimagens.com.br/images/004/633/151/original/Process.jpeg?1696944082" alt="Process" style="width:50%; margin:1%;">
+        <img src="https://uploaddeimagens.com.br/images/004/633/140/original/Feedback.jpeg?1696943909" alt="Feedback" style="width:50%; margin:1%;">
+    </div>
     <div class="instructions">
         <h2>Instruções</h2>
         <p>1. Carregue duas imagens clicando em "Imagem A" e "Imagem B".</p>
@@ -185,104 +193,103 @@
         <p>3. O Octo decidirá qual imagem é a melhor com base em critérios predefinidos.</p>
         <p>4. Dê um like 👍 ou dislike 👎 dependendo se você concorda com o Octo ou não.</p>
     </div>
-
-    <div class="container">
-    <div class="container" style="text-align:center;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/148/original/Upload.jpeg?1696944052" alt="Upload" style="width:30%; margin:1%;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/151/original/Process.jpeg?1696944082" alt="Process" style="width:30%; margin:1%;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/140/original/Feedback.jpeg?1696943909" alt="Feedback" style="width:30%; margin:1%;">
-    </div>
   </div>
 <script>
-    let model;
 
-    function updateProgressBar(value) {
-      const progressBar = document.getElementById('progressBar');
-      progressBar.value = value;
+function init() {
+    loadModel();
+
+    document.getElementById('imageA').addEventListener('change', function() {
+        previewImage(this, 'thumbA');
+    });
+
+    document.getElementById('imageB').addEventListener('change', function() {
+        previewImage(this, 'thumbB');
+    });
+}
+
+function previewImage(input, canvasId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = e.target.result;
+        };
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+let model;
+
+async function loadModel() {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.value = 10;
+    model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
+    progressBar.value = 100;
+    console.log("Modelo carregado.");
+}
+
+async function classifyImage(image, canvasId, isProcessing = false) {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.value = 20;
+    
+    const img = new Image();
+    img.src = URL.createObjectURL(image);
+    await new Promise((resolve) => img.onload = resolve);
+
+    if (!isProcessing) {
+        const thumbCanvas = document.getElementById(canvasId);
+        const thumbCtx = thumbCanvas.getContext('2d');
+        thumbCtx.clearRect(0, 0, thumbCanvas.width, thumbCanvas.height);
+        thumbCtx.drawImage(img, 0, 0, thumbCanvas.width, thumbCanvas.height);
     }
 
-    async function loadModel() {
-      updateProgressBar(10);
-      model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
-      updateProgressBar(100);
-      console.log("Modelo carregado.");
-    }
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const imageData = tf.browser.fromPixels(canvas).resizeNearestNeighbor([224, 224]).toFloat().expandDims();
+    const predictions = model.predict(imageData);
+    const topPredictionValue = predictions.as1D().max();
+    progressBar.value = 50;
 
-    function userAgreed(decision) {
-      console.log(`O usuário ${decision ? 'concorda' : 'discorda'}`);
-      alert('Obrigado pelo feedback!');
-    }
+    return topPredictionValue.arraySync();
+}
 
-    async function classifyImage(image, canvasId) {
-      updateProgressBar(20);
-      const img = new Image();
-      img.src = URL.createObjectURL(image);
-      await new Promise((resolve) => img.onload = resolve);
+async function processImages() {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.value = 0;
 
-      // Código para criar a thumbnail
-      const thumbCanvas = document.getElementById(canvasId);
-      const thumbCtx = thumbCanvas.getContext('2d');
+    const imageA = document.getElementById('imageA').files[0];
+    const imageB = document.getElementById('imageB').files[0];
 
-      // Calcula as dimensões para manter a proporção
-      let width = 32;
-      let height = 32;
-      if (img.width > img.height) {
-        height = Math.round((32 * img.height) / img.width);
-      } else {
-        width = Math.round((32 * img.width) / img.height);
-      }
-
-      // Desenha a imagem no centro do canvas
-      const x = (32 - width) / 2;
-      const y = (32 - height) / 2;
-
-      thumbCtx.drawImage(img, x, y, width, height);  // Desenha a imagem mantendo a proporção
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      const imageData = tf.browser.fromPixels(canvas).resizeNearestNeighbor([224, 224]).toFloat().expandDims();
-      const predictions = model.predict(imageData);
-      const topPrediction = predictions.as1D().argMax();
-      const topPredictionValue = predictions.as1D().max();
-      updateProgressBar(50);
-
-      return topPredictionValue.arraySync();
-    }
-
-    async function decideBetweenImages(imageA, imageB, thumbA, thumbB) {
-      const predA = await classifyImage(imageA, thumbA);
-      const predB = await classifyImage(imageB, thumbB);
-      if (predA > predB) {
-        return 'A';
-      } else {
-        return 'B';
-      }
-    }
-
-    async function processImages() {
-      updateProgressBar(0);
-      const imageA = document.getElementById('imageA').files[0];
-      const imageB = document.getElementById('imageB').files[0];
-
-      if (!imageA || !imageB) {
+    if (!imageA || !imageB) {
         alert("Por favor, selecione ambas as imagens antes de processar.");
         return;
-      }
-
-      if (imageA.name === imageB.name) {
-        alert("Por favor, utilize imagens diferentes");
-        return;
-      }
-
-      const decision = await decideBetweenImages(imageA, imageB, 'thumbA', 'thumbB');
-      updateProgressBar(90);
-      const resultElement = document.getElementById('result');
-      resultElement.textContent = decision === 'A' ? 'Imagem A é melhor!' : 'Imagem B é melhor!';
-      updateProgressBar(100);
     }
+
+    const predA = await classifyImage(imageA, 'thumbA', true);
+    const predB = await classifyImage(imageB, 'thumbB', true);
+
+    const resultElement = document.getElementById('result');
+    resultElement.textContent = predA > predB ? 'Imagem A é melhor!' : 'Imagem B é melhor!';
+    progressBar.value = 100;
+}
+
+function userAgreed(decision) {
+    console.log(`O usuário ${decision ? 'concorda' : 'discorda'}`);
+    alert('Obrigado pelo feedback!');
+}
+
   </script>
 <script>
     twemoji.parse(document.body);
