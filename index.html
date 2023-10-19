@@ -1,210 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Octo A/B Test</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
-  <style>
-    body {
-      font-family: 'Georgia', serif;
-      background: #fdf6e3;
-      color: #073642;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      text-align: center;
-      padding: 1rem;
-      font-size: 2rem;
-      background: #268bd2;
-      color: #fdf6e3;
-      margin-bottom: 1rem;
-    }
-    .container {
-      max-width: 960px;
-      margin: auto;
-      padding: 2rem;
-      background: #fdf6e3;
-      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
-    }
-    .image-boxes, .result-box, .progress-box {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-    .image-box {
-      display: inline-block;
-      margin: 0 1rem;
-    }
-    input[type="file"] {
-      display: none;
-    }
-    .custom-file-upload {
-      border: 0.125rem solid #268bd2;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      color: #268bd2;
-    }
-    .result-box {
-      background: #fdf6e3;
-      padding: 1rem;
-      border: 0.0625rem solid #93a1a1;
-      border-radius: 0.5rem;
-    }
-    .result {
-      font-size: 3rem;
-      margin-top: 0.5rem;
-      color: #268bd2;
-    }
-    button {
-      background: #268bd2;
-      border: none;
-      color: #fdf6e3;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      border-radius: 0.375rem;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #2076b9;
-    }
-    progress {
-      width: 100%;
-      margin-top: 1rem;
-    }
-    .tinder-button {
-      background: transparent;
-      border: none;
-      font-size: 2rem;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: background 0.3s;
-    }
-    .tinder-button:hover {
-      cursor: pointer;
-    }
-    .yes-button:hover {
-      background: #859900;
-    }
-    .no-button:hover {
-      background: #dc322f;
-    }
-    .octopus-container {
-        font-size: 50px;
-        position: relative;
-        text-align: center;
-        margin-top: 2rem;
-    }
-    .thought-bubble {
-        width: 40px;
-        height: 40px;
-        background-color: #fff;
-        border-radius: 50%;
-        position: absolute;
-        top: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        animation: bubbleAnimation 3s infinite;
-    }
-    @keyframes bubbleAnimation {
-        0%,
-        100% {
-            opacity: 0;
-            transform: translateX(-50%) scale(.5);
-        }
-        50% {
-            opacity: 1;
-            transform: translateX(-50%) scale(1);
-        }
-    }
-
-        footer {
-            text-align: center;
-            padding: 1rem;
-            font-size: 1rem;
-            background: #268bd2;
-            color: #fdf6e3;
-            margin-top: 1rem;
+    <meta charset="UTF-8">
+    <title>Octo A/B Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .navbar {
+            background-color: rgba(0, 123, 255, 0.7)!important;
         }
 
-        .instructions {
-            max-width: 960px;
-            margin: auto;
-            padding: 2rem;
-            background: #fdf6e3;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
-            text-align: center;
+        .card {
+            background-color: rgba(255, 255, 255, 0.8);
+            transition: box-shadow 0.5s ease-in-out;  /* Adicionado para suavizar o efeito */
         }
 
-        .instructions h2, .instructions p {
-            color: #073642;
+        .card:hover {
+            box-shadow: 0 0 15px 5px skyblue;  /* Efeito de brilho LED azul-celeste */
         }
-    
-  </style>
+
+        .bg-primary {
+            background-color: rgba(0, 123, 255, 0.7)!important;
+        }
+
+        h1 {
+            font-size: 2.5em;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </head>
+
 <body onload="init(); loadModel()">
-  <header>Octo A/B Test</header>
-<div class="container">
-  <div class="octopus-container">🐙
-      <div class="thought-bubble"></div>
-  </div>
-  <div class="container">
-    <div class="image-boxes">
-      <div class="image-box">
-        <label for="imageA" class="custom-file-upload">Imagem A</label>
-        <input type="file" id="imageA" accept="image/*">
-        <canvas id="thumbA" width="132" height="132"></canvas>
-      </div>
-      <div class="image-box">
-        <label for="imageB" class="custom-file-upload">Imagem B</label>
-        <input type="file" id="imageB" accept="image/*">
-        <canvas id="thumbB" width="132" height="132"></canvas>
-      </div>
-    </div>
-    <button onclick="processImages()">Processar</button>
-    <div class="progress-box">
-      <progress id="progressBar" value="0" max="100"></progress>
-    </div>
-    <div class="result-box">
-      <div class="result" id="result"></div>
-      <p>Você gostou da imagem escolhida?</p>
-      <button class="tinder-button yes-button" onclick="userAgreed(true)">❤️</button>
-      <button class="tinder-button no-button" onclick="userAgreed(false)">❌</button>
+
+    <nav class="navbar navbar-light">
+        <div class="container">
+            <a class="navbar-brand text-white" href="#">
+                <h1>Octo A/B Test</h1>
+            </a>
+        </div>
+    </nav>
+
+    <img src="https://uploaddeimagens.com.br/images/004/640/106/original/octoab.jpeg?1697643641" class="img-fluid mb-5" alt="Octo A/B Image">
+
+    <div class="container my-4">
+        <div class="card p-4 text-center">
+            <h2>📝 Instructions</h2>
+            <p>1. 📤 Upload two images by clicking on "Image A" and "Image B".</p>
+            <p>2. 🚀 Click on "Process" to start the A/B test.</p>
+            <p>3. 💭 Octo will decide which image is better based on predefined criteria.</p>
+            <p>4. Give a like ❤️ or dislike ❌ depending on whether you agree with Octo or not.</p>
+        </div>
     </div>
 
-    <footer>
-        O Octo A/B Test é um projeto de machine learning. O algoritmo determina qual imagem mais ativa a rede de saliência no ser humano.
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-12 mb-4">
+                <label for="imageA" class="btn btn-outline-primary btn-block">Image A</label>
+                <input type="file" id="imageA" accept="image/*" class="d-none">
+                <canvas id="thumbA" width="132" height="132" class="img-fluid"></canvas>
+            </div>
+            <div class="col-12 mb-4">
+                <label for="imageB" class="btn btn-outline-primary btn-block">Image B</label>
+                <input type="file" id="imageB" accept="image/*" class="d-none">
+                <canvas id="thumbB" width="132" height="132" class="img-fluid"></canvas>
+            </div>
+        </div>
+        <button onclick="processImages()" class="btn btn-primary btn-block mt-3">Process</button>
+        <div class="progress mt-3">
+            <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="my-4 text-center">
+            <div id="result" class="h3"></div>
+            <p>Did you like the chosen image?</p>
+            <button class="btn btn-outline-success" onclick="userAgreed(true)">❤️</button>
+            <button class="btn btn-outline-danger" onclick="userAgreed(false)">❌</button>
+        </div>
+    </div>
+<div class="container my-4 text-center">
+    <p>Are you interested in how Octo sees your image? You can perform individual image analysis in clicking <a href="https://andregazineu.github.io/OctoVision/" target="_blank">here</a>.</p>
+</div>
+
+    <footer class="bg-primary text-white text-center py-3">
+        Octo A/B Test © is a machine learning project. The algorithm determines which image activates the salience network in the human more.
+							
+								
+
+
     </footer>
 
-
-
-    <div class="container">
-    <div class="container" style="text-align:center;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/148/original/Upload.jpeg?1696944052" alt="Upload" style="width:50%; margin:1%;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/151/original/Process.jpeg?1696944082" alt="Process" style="width:50%; margin:1%;">
-        <img src="https://uploaddeimagens.com.br/images/004/633/140/original/Feedback.jpeg?1696943909" alt="Feedback" style="width:50%; margin:1%;">
+<div class="container my-4">
+    <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+        <ol class="carousel-indicators">
+            <li data-target="#carouselExampleIndicators" data-slide-to="0" class="active"></li>
+            <li data-target="#carouselExampleIndicators" data-slide-to="1"></li>
+            <li data-target="#carouselExampleIndicators" data-slide-to="2"></li>
+        </ol>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="https://uploaddeimagens.com.br/images/004/633/148/original/Upload.jpeg?1696944052" class="d-block w-100" alt="Upload">
+            </div>
+            <div class="carousel-item">
+                <img src="https://uploaddeimagens.com.br/images/004/633/151/original/Process.jpeg?1696944082" class="d-block w-100" alt="Process">
+            </div>
+            <div class="carousel-item">
+                <img src="https://uploaddeimagens.com.br/images/004/633/140/original/Feedback.jpeg?1696943909" class="d-block w-100" alt="Feedback">
+            </div>
+        </div>
+        <a class="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="sr-only">Previous</span>
+        </a>
+        <a class="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="sr-only">Next</span>
+        </a>
     </div>
-    <div class="instructions">
-        <h2>Instruções</h2>
-        <p>1. Carregue duas imagens clicando em "Imagem A" e "Imagem B".</p>
-        <p>2. Clique em "Processar" para iniciar o teste A/B.</p>
-        <p>3. O Octo decidirá qual imagem é a melhor com base em critérios predefinidos.</p>
-        <p>4. Dê um like 👍 ou dislike 👎 dependendo se você concorda com o Octo ou não.</p>
-    </div>
-  </div>
+</div>
+									
 <script>
-
-function init() {
-    loadModel();
+async function init() {
+    await loadModel();
 
     document.getElementById('imageA').addEventListener('change', function() {
         previewImage(this, 'thumbA');
+        resetResult();
     });
 
     document.getElementById('imageB').addEventListener('change', function() {
         previewImage(this, 'thumbB');
+        resetResult();
     });
 }
 
@@ -227,19 +155,28 @@ function previewImage(input, canvasId) {
     }
 }
 
+function resetResult() {
+    const resultElement = document.getElementById('result');
+    resultElement.textContent = '';
+
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+}
+
 let model;
 
 async function loadModel() {
     const progressBar = document.getElementById('progressBar');
-    progressBar.value = 10;
+    progressBar.style.width = '10%';
     model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
-    progressBar.value = 100;
+    progressBar.style.width = '100%';
     console.log("Modelo carregado.");
 }
 
 async function classifyImage(image, canvasId, isProcessing = false) {
     const progressBar = document.getElementById('progressBar');
-    progressBar.value = 20;
+    progressBar.style.width = '20%';
     
     const img = new Image();
     img.src = URL.createObjectURL(image);
@@ -260,14 +197,17 @@ async function classifyImage(image, canvasId, isProcessing = false) {
     const imageData = tf.browser.fromPixels(canvas).resizeNearestNeighbor([224, 224]).toFloat().expandDims();
     const predictions = model.predict(imageData);
     const topPredictionValue = predictions.as1D().max();
-    progressBar.value = 50;
+    progressBar.style.width = '50%';
+
+    imageData.dispose();
+    predictions.dispose();
 
     return topPredictionValue.arraySync();
 }
 
 async function processImages() {
     const progressBar = document.getElementById('progressBar');
-    progressBar.value = 0;
+    progressBar.style.width = '0%';
 
     const imageA = document.getElementById('imageA').files[0];
     const imageB = document.getElementById('imageB').files[0];
@@ -277,22 +217,30 @@ async function processImages() {
         return;
     }
 
+    if (imageA.name === imageB.name && imageA.size === imageB.size && imageA.lastModified === imageB.lastModified) {
+        alert("Você não pode selecionar a mesma imagem.");
+        return;
+    }
+
     const predA = await classifyImage(imageA, 'thumbA', true);
     const predB = await classifyImage(imageB, 'thumbB', true);
 
     const resultElement = document.getElementById('result');
-    resultElement.textContent = predA > predB ? 'Imagem A é melhor!' : 'Imagem B é melhor!';
-    progressBar.value = 100;
+    resultElement.textContent = predA > predB ? 'A is the best!' : 'B is the best!';
+    progressBar.style.width = '100%';
 }
 
 function userAgreed(decision) {
-    console.log(`O usuário ${decision ? 'concorda' : 'discorda'}`);
+    console.log(`O usuário ${decision ? 'agree' : 'disagree'}`);
     alert('Obrigado pelo feedback!');
 }
 
-  </script>
-<script>
-    twemoji.parse(document.body);
+// Adicione esta linha no final do seu script
+window.onload = init;
 </script>
+
+
+
 </body>
+
 </html>
